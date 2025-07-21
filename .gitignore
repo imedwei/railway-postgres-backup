@@ -27,6 +27,27 @@ go.work.sum
 # env file
 .env
 
+# Binary output
+postgres-backup
+
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env.local
+
+# Temporary files
+tmp/
+temp/
+
+# Build output
+dist/
+build/
