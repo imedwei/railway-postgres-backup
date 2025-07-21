@@ -1,0 +1,175 @@
+package backup
+
+import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// PostgresBackup implements the Backup interface for PostgreSQL databases.
+type PostgresBackup struct {
+	connectionURL string
+	pgDumpOptions []string
+}
+
+// NewPostgresBackup creates a new PostgreSQL backup instance.
+func NewPostgresBackup(connectionURL string, pgDumpOptions string) *PostgresBackup {
+	// Parse pg_dump options from string
+	var options []string
+	if pgDumpOptions != "" {
+		// Simple parsing - could be improved to handle quoted arguments
+		options = strings.Fields(pgDumpOptions)
+	}
+
+	return &PostgresBackup{
+		connectionURL: connectionURL,
+		pgDumpOptions: options,
+	}
+}
+
+// Dump creates a backup of the PostgreSQL database.
+func (p *PostgresBackup) Dump(ctx context.Context) (io.ReadCloser, error) {
+	// Build pg_dump command
+	args := []string{
+		"--format=tar",
+		"--verbose",
+		"--no-password",
+	}
+
+	// Add custom options
+	args = append(args, p.pgDumpOptions...)
+
+	// Add connection URL last
+	args = append(args, p.connectionURL)
+
+	// Create command
+	cmd := exec.CommandContext(ctx, "pg_dump", args...)
+
+	// Set environment to avoid password prompts
+	cmd.Env = append(os.Environ(), "PGPASSWORD=")
+
+	// Get stdout pipe
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	// Get stderr for error messages
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start pg_dump: %w", err)
+	}
+
+	// Create a pipe for gzip compression
+	pr, pw := io.Pipe()
+
+	// Start a goroutine to compress the output
+	go func() {
+		// Create gzip writer
+		gw := gzip.NewWriter(pw)
+
+		// Copy from pg_dump to gzip
+		_, copyErr := io.Copy(gw, stdout)
+
+		// Close gzip writer
+		gw.Close()
+
+		// Wait for pg_dump to finish
+		waitErr := cmd.Wait()
+
+		// Close the pipe writer with appropriate error
+		if copyErr != nil {
+			pw.CloseWithError(fmt.Errorf("failed to compress backup: %w", copyErr))
+		} else if waitErr != nil {
+			pw.CloseWithError(fmt.Errorf("pg_dump failed: %w, stderr: %s", waitErr, stderr.String()))
+		} else {
+			pw.Close()
+		}
+	}()
+
+	return pr, nil
+}
+
+// Validate checks if a backup file is valid.
+func (p *PostgresBackup) Validate(ctx context.Context, reader io.Reader) error {
+	// Create gzip reader
+	gr, err := gzip.NewReader(reader)
+	if err != nil {
+		return fmt.Errorf("invalid gzip format: %w", err)
+	}
+	defer gr.Close()
+
+	// Create tar reader
+	tr := tar.NewReader(gr)
+
+	// Check if we can read at least one entry
+	_, err = tr.Next()
+	if err != nil {
+		if err == io.EOF {
+			return fmt.Errorf("backup archive is empty")
+		}
+		return fmt.Errorf("invalid tar format: %w", err)
+	}
+
+	// TODO: Could add more validation here, such as:
+	// - Checking for specific PostgreSQL backup files
+	// - Validating the structure of the backup
+	// - Checking file sizes
+
+	return nil
+}
+
+// GetInfo returns information about the database.
+func (p *PostgresBackup) GetInfo(ctx context.Context) (*DatabaseInfo, error) {
+	// Query to get database information
+	query := `
+		SELECT 
+			current_database() as name,
+			pg_database_size(current_database()) as size,
+			version() as version
+	`
+
+	// Use psql to execute the query
+	cmd := exec.CommandContext(ctx, "psql",
+		"--no-password",
+		"--tuples-only",
+		"--no-align",
+		"--field-separator=|",
+		"--command", query,
+		p.connectionURL,
+	)
+
+	// Set environment
+	cmd.Env = append(os.Environ(), "PGPASSWORD=")
+
+	// Execute command
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database info: %w", err)
+	}
+
+	// Parse output
+	parts := strings.Split(strings.TrimSpace(string(output)), "|")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("unexpected output format from psql")
+	}
+
+	// Parse size
+	var size int64
+	fmt.Sscanf(parts[1], "%d", &size)
+
+	return &DatabaseInfo{
+		Name:    strings.TrimSpace(parts[0]),
+		Size:    size,
+		Version: strings.TrimSpace(parts[2]),
+	}, nil
+}
