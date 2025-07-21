@@ -80,10 +80,14 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 		metrics.DatabaseSize.Set(float64(info.Size))
 	}
 
-	// Generate backup filename
+	// Generate backup filename and key
 	timestamp := time.Now()
-	filename := utils.GenerateBackupFilename(o.config.BackupFilePrefix, timestamp)
-	o.logger.Info("Generated backup filename", "filename", filename)
+	filename := utils.GenerateBackupFilename(o.config.BackupFilePrefix, timestamp, info.Version)
+	
+	// Create storage key with year/month directory structure
+	storageKey := fmt.Sprintf("%d/%02d/%s", timestamp.Year(), timestamp.Month(), filename)
+	
+	o.logger.Info("Generated backup filename", "filename", filename, "storage_key", storageKey)
 
 	// Create backup
 	o.logger.Info("Starting database dump")
@@ -151,7 +155,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	uploadTimer := metrics.BackupDuration.WithLabelValues("upload")
 	uploadStart := time.Now()
 
-	if err := o.storage.Upload(ctx, filename, pr, metadata); err != nil {
+	if err := o.storage.Upload(ctx, storageKey, pr, metadata); err != nil {
 		metrics.RecordStorageOperation("upload", o.config.StorageProvider, false)
 		metrics.RecordBackupAttempt(false)
 		return fmt.Errorf("failed to upload backup: %w", err)
@@ -166,6 +170,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 
 	o.logger.Info("Backup completed successfully",
 		"filename", filename,
+		"storage_key", storageKey,
 		"bytes_written", bytesWritten,
 		"upload_duration", uploadDuration,
 		"bytes_per_second", float64(bytesWritten)/uploadDuration.Seconds(),

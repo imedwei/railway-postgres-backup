@@ -7,25 +7,42 @@ import (
 	"time"
 )
 
-// GenerateBackupFilename creates a timestamped backup filename.
-func GenerateBackupFilename(prefix string, timestamp time.Time) string {
-	// Format: prefix-2006-01-02T15-04-05-000Z.tar.gz
+// GenerateBackupFilename creates a timestamped backup filename with PostgreSQL version.
+func GenerateBackupFilename(prefix string, timestamp time.Time, pgVersion string) string {
+	// Format: prefix-pg15-2006-01-02T15-04-05-000Z.tar.gz
 	// Using dashes instead of colons for better filesystem compatibility
 	// Format milliseconds manually to ensure 3 digits
 	t := timestamp.UTC()
 	ms := t.Nanosecond() / 1000000
 	timeStr := fmt.Sprintf("%s-%03dZ", t.Format("2006-01-02T15-04-05"), ms)
 
+	// Extract major version from version string (e.g., "PostgreSQL 15.2" -> "15")
+	versionPart := "unknown"
+	if pgVersion != "" && pgVersion != "unknown" {
+		// Try to extract major version number
+		parts := strings.Fields(pgVersion)
+		for _, part := range parts {
+			if strings.Contains(part, ".") {
+				versionParts := strings.Split(part, ".")
+				if len(versionParts) > 0 {
+					versionPart = versionParts[0]
+					break
+				}
+			}
+		}
+	}
+
 	if prefix != "" {
 		// Ensure prefix doesn't end with dash
 		prefix = strings.TrimSuffix(prefix, "-")
-		return fmt.Sprintf("%s-%s.tar.gz", prefix, timeStr)
+		return fmt.Sprintf("%s-pg%s-%s.tar.gz", prefix, versionPart, timeStr)
 	}
 
-	return fmt.Sprintf("backup-%s.tar.gz", timeStr)
+	return fmt.Sprintf("backup-pg%s-%s.tar.gz", versionPart, timeStr)
 }
 
 // ParseBackupFilename extracts the timestamp from a backup filename.
+// Updated format includes version: prefix-pgXX-2006-01-02T15-04-05-000Z.tar.gz
 func ParseBackupFilename(filename string) (time.Time, error) {
 	// Remove .tar.gz extension
 	name := strings.TrimSuffix(filename, ".tar.gz")
