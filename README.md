@@ -1,4 +1,4 @@
-# Railway PostgreSQL Backup
+# Railway Postgres 🥇 Daily Backups
 
 A production-ready PostgreSQL backup service designed for Railway.app deployments with support for S3 and Google Cloud Storage.
 
@@ -19,7 +19,7 @@ A production-ready PostgreSQL backup service designed for Railway.app deployment
 
 1. Deploy to Railway using the template:
    ```bash
-   railway new -t railway-postgres-backup
+   railway new -t postgres-daily-backups
    ```
 
 2. Configure environment variables (see Configuration section)

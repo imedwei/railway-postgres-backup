@@ -1,10 +1,10 @@
-# Railway PostgreSQL Backup Development Guide
+# Railway Postgres 🥇 Daily Backups Development Guide
 
 This document provides guidance for Claude (AI assistant) when working on this project.
 
 ## Project Overview
 
-Railway PostgreSQL Backup is a production-ready backup service designed for Railway.app deployments. It supports backing up PostgreSQL databases to S3 or Google Cloud Storage with respawn protection to prevent accidental frequent backups.
+Railway Postgres 🥇 Daily Backups is a production-ready backup service designed for Railway.app deployments. It supports backing up PostgreSQL databases to S3 or Google Cloud Storage with respawn protection to prevent accidental frequent backups.
 
 ## Key Principles
 
