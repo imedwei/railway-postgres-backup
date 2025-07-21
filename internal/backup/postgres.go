@@ -7,15 +7,20 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // PostgresBackup implements the Backup interface for PostgreSQL databases.
 type PostgresBackup struct {
 	connectionURL string
 	pgDumpOptions []string
+	pgDumpBin     string
+	psqlBin       string
+	logger        *slog.Logger
 }
 
 // NewPostgresBackup creates a new PostgreSQL backup instance.
@@ -27,10 +32,43 @@ func NewPostgresBackup(connectionURL string, pgDumpOptions string) *PostgresBack
 		options = strings.Fields(pgDumpOptions)
 	}
 
-	return &PostgresBackup{
+	logger := slog.Default().With("component", "postgres-backup")
+
+	pb := &PostgresBackup{
 		connectionURL: connectionURL,
 		pgDumpOptions: options,
+		logger:        logger,
 	}
+
+	// Try to detect PostgreSQL version and find appropriate binaries
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if version, err := GetServerVersion(ctx, connectionURL); err == nil {
+		logger.Info("Detected PostgreSQL version", "version", version.Full, "major", version.Major)
+		
+		if pgDumpBin, err := FindBestPGDump(version); err == nil {
+			pb.pgDumpBin = pgDumpBin
+			logger.Info("Selected pg_dump binary", "binary", pgDumpBin)
+		}
+		
+		if psqlBin, err := FindBestPSQL(version); err == nil {
+			pb.psqlBin = psqlBin
+			logger.Info("Selected psql binary", "binary", psqlBin)
+		}
+	} else {
+		logger.Warn("Could not detect PostgreSQL version, using default binaries", "error", err)
+	}
+
+	// Fallback to default binaries if not set
+	if pb.pgDumpBin == "" {
+		pb.pgDumpBin = "pg_dump"
+	}
+	if pb.psqlBin == "" {
+		pb.psqlBin = "psql"
+	}
+
+	return pb
 }
 
 // Dump creates a backup of the PostgreSQL database.
@@ -48,8 +86,8 @@ func (p *PostgresBackup) Dump(ctx context.Context) (io.ReadCloser, error) {
 	// Add connection URL last
 	args = append(args, p.connectionURL)
 
-	// Create command
-	cmd := exec.CommandContext(ctx, "pg_dump", args...)
+	// Create command with the appropriate pg_dump binary
+	cmd := exec.CommandContext(ctx, p.pgDumpBin, args...)
 
 	// Set environment to avoid password prompts
 	cmd.Env = append(os.Environ(), "PGPASSWORD=")
@@ -144,7 +182,7 @@ func (p *PostgresBackup) GetInfo(ctx context.Context) (*DatabaseInfo, error) {
 	`
 
 	// Use psql to execute the query
-	cmd := exec.CommandContext(ctx, "psql",
+	cmd := exec.CommandContext(ctx, p.psqlBin,
 		"--no-password",
 		"--tuples-only",
 		"--no-align",
