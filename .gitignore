@@ -28,7 +28,7 @@ go.work.sum
 .env
 
 # Binary output
-postgres-backup
+# (covered by bin/ directory)
 
 # Editor/IDE
 .idea/
@@ -51,3 +51,4 @@ temp/
 # Build output
 dist/
 build/
+bin/
