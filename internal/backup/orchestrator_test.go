@@ -66,7 +66,7 @@ func (m *mockStorage) Upload(ctx context.Context, key string, reader io.Reader, 
 	m.metadata = metadata
 
 	// Consume the reader
-	io.ReadAll(reader)
+	_, _ = io.ReadAll(reader)
 
 	return m.uploadErr
 }

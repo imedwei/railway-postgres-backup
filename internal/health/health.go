@@ -93,7 +93,11 @@ func (c *Checker) Handler() http.HandlerFunc {
 
 		// Write JSON response
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			// Log error but don't try to write another response
+			// as headers are already sent
+			_ = err
+		}
 	}
 }
 
@@ -101,7 +105,7 @@ func (c *Checker) Handler() http.HandlerFunc {
 func ReadinessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ready\n"))
+		_, _ = w.Write([]byte("ready\n"))
 	}
 }
 
@@ -109,6 +113,6 @@ func ReadinessHandler() http.HandlerFunc {
 func LivenessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("alive\n"))
+		_, _ = w.Write([]byte("alive\n"))
 	}
 }

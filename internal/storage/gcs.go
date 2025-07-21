@@ -65,7 +65,7 @@ func (g *GCSStorage) Upload(ctx context.Context, key string, reader io.Reader, m
 
 	// Copy data
 	if _, err := io.Copy(w, reader); err != nil {
-		w.Close()
+		_ = w.Close()
 		return fmt.Errorf("failed to upload to GCS: %w", err)
 	}
 

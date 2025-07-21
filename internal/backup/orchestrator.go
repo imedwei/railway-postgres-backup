@@ -95,7 +95,11 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 		metrics.RecordBackupAttempt(false)
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		if err := reader.Close(); err != nil {
+			o.logger.Warn("Failed to close reader", "error", err)
+		}
+	}()
 
 	dumpTimer.Observe(time.Since(dumpStart).Seconds())
 
@@ -104,7 +108,11 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	var bytesWritten int64
 
 	go func() {
-		defer pw.Close()
+		defer func() {
+			if err := pw.Close(); err != nil {
+				o.logger.Warn("Failed to close pipe writer", "error", err)
+			}
+		}()
 
 		buf := make([]byte, 32*1024) // 32KB buffer
 		for {
@@ -112,13 +120,17 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 			if n > 0 {
 				bytesWritten += int64(n)
 				if _, writeErr := pw.Write(buf[:n]); writeErr != nil {
-					pw.CloseWithError(writeErr)
+					if closeErr := pw.CloseWithError(writeErr); closeErr != nil {
+						o.logger.Warn("Failed to close pipe writer with error", "error", closeErr)
+					}
 					return
 				}
 			}
 			if err != nil {
 				if err != io.EOF {
-					pw.CloseWithError(err)
+					if closeErr := pw.CloseWithError(err); closeErr != nil {
+						o.logger.Warn("Failed to close pipe writer with error", "error", closeErr)
+					}
 					return
 				}
 				break

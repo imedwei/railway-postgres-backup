@@ -81,18 +81,21 @@ func (p *PostgresBackup) Dump(ctx context.Context) (io.ReadCloser, error) {
 		_, copyErr := io.Copy(gw, stdout)
 
 		// Close gzip writer
-		gw.Close()
+		if closeErr := gw.Close(); closeErr != nil {
+			_ = pw.CloseWithError(fmt.Errorf("failed to close gzip writer: %w", closeErr))
+			return
+		}
 
 		// Wait for pg_dump to finish
 		waitErr := cmd.Wait()
 
 		// Close the pipe writer with appropriate error
 		if copyErr != nil {
-			pw.CloseWithError(fmt.Errorf("failed to compress backup: %w", copyErr))
+			_ = pw.CloseWithError(fmt.Errorf("failed to compress backup: %w", copyErr))
 		} else if waitErr != nil {
-			pw.CloseWithError(fmt.Errorf("pg_dump failed: %w, stderr: %s", waitErr, stderr.String()))
+			_ = pw.CloseWithError(fmt.Errorf("pg_dump failed: %w, stderr: %s", waitErr, stderr.String()))
 		} else {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 
@@ -106,7 +109,9 @@ func (p *PostgresBackup) Validate(ctx context.Context, reader io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("invalid gzip format: %w", err)
 	}
-	defer gr.Close()
+	defer func() {
+		_ = gr.Close()
+	}()
 
 	// Create tar reader
 	tr := tar.NewReader(gr)
@@ -165,7 +170,7 @@ func (p *PostgresBackup) GetInfo(ctx context.Context) (*DatabaseInfo, error) {
 
 	// Parse size
 	var size int64
-	fmt.Sscanf(parts[1], "%d", &size)
+	_, _ = fmt.Sscanf(parts[1], "%d", &size)
 
 	return &DatabaseInfo{
 		Name:    strings.TrimSpace(parts[0]),

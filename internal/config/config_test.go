@@ -19,7 +19,7 @@ func TestLoad(t *testing.T) {
 	}
 	defer func() {
 		for k, v := range originalEnv {
-			os.Setenv(k, v)
+			_ = os.Setenv(k, v)
 		}
 	}()
 
@@ -91,12 +91,12 @@ func TestLoad(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear env
 			for k := range originalEnv {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			}
 
 			// Set test env
 			for k, v := range tt.env {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			}
 
 			cfg, err := Load()
@@ -176,8 +176,10 @@ func TestConfig_GetRespawnProtectionDuration(t *testing.T) {
 }
 
 func TestGetEnvInt(t *testing.T) {
-	os.Setenv("TEST_INT", "42")
-	defer os.Unsetenv("TEST_INT")
+	_ = os.Setenv("TEST_INT", "42")
+	defer func() {
+		_ = os.Unsetenv("TEST_INT")
+	}()
 
 	if got := getEnvInt("TEST_INT", 10); got != 42 {
 		t.Errorf("getEnvInt() = %v, want %v", got, 42)
@@ -189,8 +191,10 @@ func TestGetEnvInt(t *testing.T) {
 }
 
 func TestGetEnvBool(t *testing.T) {
-	os.Setenv("TEST_BOOL", "true")
-	defer os.Unsetenv("TEST_BOOL")
+	_ = os.Setenv("TEST_BOOL", "true")
+	defer func() {
+		_ = os.Unsetenv("TEST_BOOL")
+	}()
 
 	if got := getEnvBool("TEST_BOOL", false); got != true {
 		t.Errorf("getEnvBool() = %v, want %v", got, true)
