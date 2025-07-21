@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/imedwei/railway-postgres-backup/internal/config"
+	"github.com/imedwei/railway-postgres-backup/internal/metrics"
 	"github.com/imedwei/railway-postgres-backup/internal/ratelimit"
 	"github.com/imedwei/railway-postgres-backup/internal/storage"
 	"github.com/imedwei/railway-postgres-backup/internal/utils"
@@ -42,7 +43,11 @@ func NewOrchestrator(cfg *config.Config, storage storage.Storage, backup Backup,
 
 // Run executes the backup process.
 func (o *Orchestrator) Run(ctx context.Context) error {
+	startTime := time.Now()
 	o.logger.Info("Starting backup orchestration")
+
+	// Initialize metrics
+	metrics.Info.WithLabelValues("1.0.0", o.config.StorageProvider).Set(1)
 
 	// Check respawn protection
 	lastBackupTime, err := o.storage.GetLastBackupTime(ctx)
@@ -55,6 +60,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 
 		if !shouldBackup {
 			o.logger.Info("Skipping backup due to rate limiting", "reason", reason)
+			metrics.RateLimitBlocked.Inc()
 			return nil
 		}
 	}
@@ -71,6 +77,7 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 			"size_bytes", info.Size,
 			"version", info.Version,
 		)
+		metrics.DatabaseSize.Set(float64(info.Size))
 	}
 
 	// Generate backup filename
@@ -80,11 +87,17 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 
 	// Create backup
 	o.logger.Info("Starting database dump")
+	dumpTimer := metrics.BackupDuration.WithLabelValues("dump")
+	dumpStart := time.Now()
+
 	reader, err := o.backup.Dump(ctx)
 	if err != nil {
+		metrics.RecordBackupAttempt(false)
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 	defer reader.Close()
+
+	dumpTimer.Observe(time.Since(dumpStart).Seconds())
 
 	// Create a tee reader to count bytes
 	pr, pw := io.Pipe()
@@ -123,19 +136,31 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 
 	// Upload to storage
 	o.logger.Info("Starting upload to storage", "provider", o.config.StorageProvider)
+	uploadTimer := metrics.BackupDuration.WithLabelValues("upload")
 	uploadStart := time.Now()
 
 	if err := o.storage.Upload(ctx, filename, pr, metadata); err != nil {
+		metrics.RecordStorageOperation("upload", o.config.StorageProvider, false)
+		metrics.RecordBackupAttempt(false)
 		return fmt.Errorf("failed to upload backup: %w", err)
 	}
 
 	uploadDuration := time.Since(uploadStart)
+	uploadTimer.Observe(uploadDuration.Seconds())
+	metrics.RecordStorageOperation("upload", o.config.StorageProvider, true)
+	metrics.BackupSize.Set(float64(bytesWritten))
+	metrics.LastBackupTimestamp.Set(float64(timestamp.Unix()))
+	metrics.RecordBackupAttempt(true)
+
 	o.logger.Info("Backup completed successfully",
 		"filename", filename,
 		"bytes_written", bytesWritten,
 		"upload_duration", uploadDuration,
 		"bytes_per_second", float64(bytesWritten)/uploadDuration.Seconds(),
 	)
+
+	// Record total duration
+	metrics.BackupDuration.WithLabelValues("total").Observe(time.Since(startTime).Seconds())
 
 	// Optional: Clean up old backups if retention is configured
 	if o.config.RetentionDays > 0 {
@@ -185,9 +210,12 @@ func (o *Orchestrator) cleanupOldBackups(ctx context.Context) error {
 					"filename", obj.Key,
 					"error", err,
 				)
+				metrics.RecordStorageOperation("delete", o.config.StorageProvider, false)
 				// Continue with other deletions
 			} else {
 				deleted++
+				metrics.RecordStorageOperation("delete", o.config.StorageProvider, true)
+				metrics.BackupsDeleted.Inc()
 			}
 		}
 	}
