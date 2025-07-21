@@ -11,6 +11,7 @@ A production-ready PostgreSQL backup service designed for Railway.app deployment
 - **Production Ready**: Retry logic, graceful shutdown, panic recovery
 - **Flexible Configuration**: Environment variable based configuration
 - **Backup Management**: Automatic cleanup of old backups based on retention policy
+- **PostgreSQL Version Support**: Automatically detects and uses the correct pg_dump version for PostgreSQL 15, 16, and 17
 
 ## Quick Start
 
@@ -104,6 +105,17 @@ When `METRICS_PORT` is set, the following endpoints are available:
 ## Respawn Protection
 
 The service includes respawn protection to prevent excessive backups when Railway restarts containers. By default, backups are only allowed once every 23 hours. This can be configured with `RESPAWN_PROTECTION_HOURS` or overridden with `FORCE_BACKUP=true`.
+
+## PostgreSQL Version Compatibility
+
+The service automatically detects your PostgreSQL server version and uses the appropriate `pg_dump` client:
+
+- **PostgreSQL 17**: Uses `pg_dump17`
+- **PostgreSQL 16**: Uses `pg_dump16`
+- **PostgreSQL 15**: Uses `pg_dump15`
+- **PostgreSQL < 15**: Uses `pg_dump15` (backward compatible)
+
+This ensures maximum compatibility and prevents version mismatch errors during backups.
 
 ## Development
 
