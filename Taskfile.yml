@@ -67,3 +67,22 @@ tasks:
     desc: Run the application locally
     cmds:
       - go run ./cmd/backup
+
+  docker:compose:up:
+    desc: Start local development environment
+    cmds:
+      - docker-compose up -d
+      - echo "Waiting for services to be ready..."
+      - sleep 10
+      - docker-compose exec -T minio mc alias set local http://localhost:9000 minioadmin minioadmin
+      - docker-compose exec -T minio mc mb local/backups || true
+
+  docker:compose:down:
+    desc: Stop local development environment
+    cmds:
+      - docker-compose down -v
+
+  docker:compose:test:
+    desc: Run backup in docker-compose environment
+    cmds:
+      - docker-compose run --rm backup
