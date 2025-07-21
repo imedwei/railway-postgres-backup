@@ -25,7 +25,8 @@
   },
   "S3_ENDPOINT": {
     "value": "",
-    "description": "Custom S3 endpoint for S3-compatible storage (optional)"
+    "description": "Custom S3 endpoint for S3-compatible storage (optional)",
+    "allowEmpty": true
   },
   "S3_PATH_STYLE": {
     "value": "false",
@@ -33,23 +34,28 @@
   },
   "S3_PREFIX": {
     "value": "",
-    "description": "Prefix/folder for backup files in S3 bucket (optional)"
+    "description": "Prefix/folder for backup files in S3 bucket (optional)",
+    "allowEmpty": true
   },
   "GCS_BUCKET": {
     "value": "",
-    "description": "Google Cloud Storage bucket name (when using GCS)"
+    "description": "Google Cloud Storage bucket name (when using GCS)",
+    "allowEmpty": true
   },
   "GOOGLE_PROJECT_ID": {
     "value": "",
-    "description": "Google Cloud project ID (when using GCS)"
+    "description": "Google Cloud project ID (when using GCS)",
+    "allowEmpty": true
   },
   "GOOGLE_SERVICE_ACCOUNT_JSON": {
     "value": "",
-    "description": "Service account JSON for GCS authentication (when using GCS)"
+    "description": "Service account JSON for GCS authentication (when using GCS)",
+    "allowEmpty": true
   },
   "GCS_PREFIX": {
     "value": "",
-    "description": "Prefix/folder for backup files in GCS bucket (optional)"
+    "description": "Prefix/folder for backup files in GCS bucket (optional)",
+    "allowEmpty": true
   },
   "BACKUP_FILE_PREFIX": {
     "value": "backup",
@@ -57,7 +63,8 @@
   },
   "PG_DUMP_OPTIONS": {
     "value": "",
-    "description": "Additional pg_dump command options (e.g., --verbose --no-owner)"
+    "description": "Additional pg_dump command options (e.g., --verbose --no-owner)",
+    "allowEmpty": true
   },
   "RESPAWN_PROTECTION_HOURS": {
     "value": "23",
@@ -73,6 +80,7 @@
   },
   "METRICS_PORT": {
     "value": "",
-    "description": "Port for Prometheus metrics and health endpoints (optional, e.g., 8080)"
+    "description": "Port for Prometheus metrics and health endpoints (optional, e.g., 8080)",
+    "allowEmpty": true
   }
 }
