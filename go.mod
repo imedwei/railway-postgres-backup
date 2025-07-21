@@ -1,6 +1,6 @@
 module github.com/imedwei/railway-postgres-backup
 
-go 1.24.3
+go 1.24.5
 
 require (
 	cloud.google.com/go/storage v1.55.0
