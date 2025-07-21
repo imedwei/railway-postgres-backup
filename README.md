@@ -18,9 +18,8 @@ A production-ready PostgreSQL backup service designed for Railway.app deployment
 ### Railway Deployment
 
 1. Deploy to Railway using the template:
-   ```bash
-   railway new -t postgres-daily-backups
-   ```
+   
+   [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/postgres-daily-backups?referralCode=66q-h8)
 
 2. Configure environment variables (see Configuration section)
 
