@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   MODULE: github.com/imedwei/railway-postgres-backup
-  BINARY: postgres-backup
+  BINARY: bin/postgres-backup
 
 tasks:
   default:
@@ -13,6 +13,7 @@ tasks:
   build:
     desc: Build the application
     cmds:
+      - mkdir -p bin
       - go build -o {{.BINARY}} ./cmd/backup
 
   test:
@@ -50,7 +51,7 @@ tasks:
   clean:
     desc: Clean build artifacts
     cmds:
-      - rm -f {{.BINARY}}
+      - rm -rf bin/
       - rm -f coverage.out coverage.html
 
   docker:build:
