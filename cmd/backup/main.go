@@ -24,6 +24,14 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
+	// Set up panic recovery
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("Panic recovered", "error", r)
+			os.Exit(1)
+		}
+	}()
+
 	// Log startup
 	logger.Info("Railway PostgreSQL Backup Service starting")
 
@@ -69,6 +77,28 @@ func main() {
 				Status:    health.StatusHealthy,
 				Timestamp: time.Now(),
 				Details:   map[string]interface{}{"provider": cfg.StorageProvider},
+			}
+		})
+
+		httpServer.RegisterHealthCheck("database", func(ctx context.Context) health.Check {
+			// Check database connectivity
+			dbBackup := backup.NewPostgresBackup(cfg.DatabaseURL, cfg.PGDumpOptions)
+			info, err := dbBackup.GetInfo(ctx)
+			if err != nil {
+				return health.Check{
+					Status:    health.StatusUnhealthy,
+					Timestamp: time.Now(),
+					Details:   map[string]interface{}{"error": err.Error()},
+				}
+			}
+			return health.Check{
+				Status:    health.StatusHealthy,
+				Timestamp: time.Now(),
+				Details: map[string]interface{}{
+					"database": info.Name,
+					"version":  info.Version,
+					"size":     info.Size,
+				},
 			}
 		})
 
