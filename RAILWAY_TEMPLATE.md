@@ -29,14 +29,15 @@ Postgres 🥇 Daily Backups seamlessly integrates with Railway's PostgreSQL data
 
 ### Implementation Details
 
-Configure your backup schedule using Railway's cron syntax:
-```
-# Daily backup at 3 AM
-RAILWAY_CRON_SCHEDULE="0 3 * * *"
+The service comes pre-configured with a daily backup at 3 AM UTC. To customize the schedule:
+1. Go to your deployed service in Railway
+2. Navigate to Settings → Cron Schedule
+3. Modify the cron expression, for example:
+   - `0 3 * * *` - Daily at 3 AM UTC (default)
+   - `0 */6 * * *` - Every 6 hours
+   - `0 0 * * 0` - Weekly on Sunday at midnight UTC
 
-# Every 6 hours
-RAILWAY_CRON_SCHEDULE="0 */6 * * *"
-```
+Note: All cron schedules run in UTC timezone.
 
 Monitor backup health via built-in endpoints:
 ```

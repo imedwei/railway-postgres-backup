@@ -23,7 +23,7 @@ A production-ready PostgreSQL backup service designed for Railway.app deployment
 
 2. Configure environment variables (see Configuration section)
 
-3. Set up Railway cron schedule (e.g., `0 3 * * *` for daily at 3 AM)
+3. The service comes pre-configured with a daily 3 AM UTC backup schedule. To modify, go to Settings → Cron Schedule
 
 ### Docker
 
