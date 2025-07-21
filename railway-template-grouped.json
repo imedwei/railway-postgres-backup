@@ -1,0 +1,116 @@
+{
+  "core": {
+    "DATABASE_URL": {
+      "value": "${{Postgres.DATABASE_URL}}",
+      "description": "PostgreSQL connection string from Railway PostgreSQL service",
+      "required": true
+    },
+    "STORAGE_PROVIDER": {
+      "value": "S3",
+      "description": "Storage backend - either 'S3' or 'GCS'",
+      "required": true,
+      "options": ["S3", "GCS"]
+    }
+  },
+  "s3_configuration": {
+    "AWS_ACCESS_KEY_ID": {
+      "value": "",
+      "description": "AWS access key for S3 authentication",
+      "required_when": "STORAGE_PROVIDER=S3"
+    },
+    "AWS_SECRET_ACCESS_KEY": {
+      "value": "",
+      "description": "AWS secret access key for S3 authentication",
+      "required_when": "STORAGE_PROVIDER=S3"
+    },
+    "S3_BUCKET": {
+      "value": "",
+      "description": "S3 bucket name for storing backups",
+      "required_when": "STORAGE_PROVIDER=S3"
+    },
+    "AWS_REGION": {
+      "value": "us-east-1",
+      "description": "AWS region for S3 bucket",
+      "required_when": "STORAGE_PROVIDER=S3"
+    },
+    "S3_ENDPOINT": {
+      "value": "",
+      "description": "Custom S3 endpoint for S3-compatible storage",
+      "optional": true,
+      "example": "https://s3.us-east-1.amazonaws.com"
+    },
+    "S3_PATH_STYLE": {
+      "value": "false",
+      "description": "Use path-style URLs for S3 (needed for MinIO/custom endpoints)",
+      "optional": true,
+      "options": ["true", "false"]
+    },
+    "S3_PREFIX": {
+      "value": "",
+      "description": "Prefix/folder for backup files in S3 bucket",
+      "optional": true,
+      "example": "backups/postgres/"
+    }
+  },
+  "gcs_configuration": {
+    "GCS_BUCKET": {
+      "value": "",
+      "description": "Google Cloud Storage bucket name",
+      "required_when": "STORAGE_PROVIDER=GCS"
+    },
+    "GOOGLE_PROJECT_ID": {
+      "value": "",
+      "description": "Google Cloud project ID",
+      "required_when": "STORAGE_PROVIDER=GCS"
+    },
+    "GOOGLE_SERVICE_ACCOUNT_JSON": {
+      "value": "",
+      "description": "Service account JSON for GCS authentication",
+      "required_when": "STORAGE_PROVIDER=GCS",
+      "sensitive": true
+    },
+    "GCS_PREFIX": {
+      "value": "",
+      "description": "Prefix/folder for backup files in GCS bucket",
+      "optional": true,
+      "example": "backups/postgres/"
+    }
+  },
+  "backup_configuration": {
+    "BACKUP_FILE_PREFIX": {
+      "value": "backup",
+      "description": "Prefix for backup filenames",
+      "optional": true
+    },
+    "PG_DUMP_OPTIONS": {
+      "value": "",
+      "description": "Additional pg_dump command options",
+      "optional": true,
+      "example": "--verbose --no-owner --exclude-table=logs"
+    },
+    "RESPAWN_PROTECTION_HOURS": {
+      "value": "23",
+      "description": "Minimum hours between backups to prevent frequent restarts",
+      "optional": true
+    },
+    "FORCE_BACKUP": {
+      "value": "false",
+      "description": "Override respawn protection and force backup",
+      "optional": true,
+      "options": ["true", "false"]
+    },
+    "RETENTION_DAYS": {
+      "value": "7",
+      "description": "Number of days to keep old backups, 0 to disable cleanup",
+      "optional": true
+    }
+  },
+  "monitoring": {
+    "METRICS_PORT": {
+      "value": "",
+      "description": "Port for Prometheus metrics and health endpoints",
+      "optional": true,
+      "example": "8080"
+    }
+  }
+}
