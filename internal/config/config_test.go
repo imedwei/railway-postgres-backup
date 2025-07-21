@@ -43,10 +43,10 @@ func TestLoad(t *testing.T) {
 		{
 			name: "valid GCS config",
 			env: map[string]string{
-				"DATABASE_URL":              "postgres://user:pass@localhost/db",
-				"STORAGE_PROVIDER":          "gcs",
-				"GCS_BUCKET":                "test-bucket",
-				"GOOGLE_PROJECT_ID":         "test-project",
+				"DATABASE_URL":                "postgres://user:pass@localhost/db",
+				"STORAGE_PROVIDER":            "gcs",
+				"GCS_BUCKET":                  "test-bucket",
+				"GOOGLE_PROJECT_ID":           "test-project",
 				"GOOGLE_SERVICE_ACCOUNT_JSON": `{"type": "service_account"}`,
 			},
 			wantErr: false,
