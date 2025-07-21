@@ -49,7 +49,7 @@ func ParseBackupFilename(filename string) (time.Time, error) {
 
 	// Parse milliseconds
 	var ms int
-	fmt.Sscanf(msPart, "%d", &ms)
+	_, _ = fmt.Sscanf(msPart, "%d", &ms)
 
 	// Parse base time
 	t, err := time.Parse("2006-01-02T15-04-05", datePart)

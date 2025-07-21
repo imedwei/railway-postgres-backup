@@ -81,11 +81,11 @@ func TestPostgresBackup_Validate(t *testing.T) {
 					Mode: 0600,
 					Size: 12,
 				}
-				tw.WriteHeader(hdr)
-				tw.Write([]byte("SELECT 1;\n"))
+				_ = tw.WriteHeader(hdr)
+				_, _ = tw.Write([]byte("SELECT 1;\n"))
 
-				tw.Close()
-				gw.Close()
+				_ = tw.Close()
+				_ = gw.Close()
 
 				return &buf
 			},
@@ -97,8 +97,8 @@ func TestPostgresBackup_Validate(t *testing.T) {
 				var buf bytes.Buffer
 				gw := gzip.NewWriter(&buf)
 				tw := tar.NewWriter(gw)
-				tw.Close()
-				gw.Close()
+				_ = tw.Close()
+				_ = gw.Close()
 				return &buf
 			},
 			wantErr: true,
@@ -117,8 +117,8 @@ func TestPostgresBackup_Validate(t *testing.T) {
 			data: func() io.Reader {
 				var buf bytes.Buffer
 				gw := gzip.NewWriter(&buf)
-				gw.Write([]byte("not a tar file"))
-				gw.Close()
+				_, _ = gw.Write([]byte("not a tar file"))
+				_ = gw.Close()
 				return &buf
 			},
 			wantErr: true,
