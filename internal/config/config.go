@@ -24,8 +24,8 @@ type Config struct {
 	S3Endpoint         string // Optional custom endpoint
 
 	// GCS configuration
-	GCSBucket               string
-	GoogleProjectID         string
+	GCSBucket                string
+	GoogleProjectID          string
 	GoogleServiceAccountJSON string
 
 	// Respawn protection
@@ -52,8 +52,8 @@ func Load() (*Config, error) {
 		S3Endpoint:         os.Getenv("S3_ENDPOINT"),
 
 		// GCS
-		GCSBucket:               os.Getenv("GCS_BUCKET"),
-		GoogleProjectID:         os.Getenv("GOOGLE_PROJECT_ID"),
+		GCSBucket:                os.Getenv("GCS_BUCKET"),
+		GoogleProjectID:          os.Getenv("GOOGLE_PROJECT_ID"),
 		GoogleServiceAccountJSON: os.Getenv("GOOGLE_SERVICE_ACCOUNT_JSON"),
 
 		// Options
