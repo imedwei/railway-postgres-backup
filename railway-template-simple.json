@@ -1,0 +1,17 @@
+{
+  "DATABASE_URL": "${{Postgres.DATABASE_URL}}",
+  "STORAGE_PROVIDER": "S3",
+  "AWS_ACCESS_KEY_ID": "",
+  "AWS_SECRET_ACCESS_KEY": "",
+  "S3_BUCKET": "",
+  "AWS_REGION": "us-east-1",
+  "S3_ENDPOINT": "",
+  "S3_PATH_STYLE": "false",
+  "S3_PREFIX": "",
+  "BACKUP_FILE_PREFIX": "backup",
+  "PG_DUMP_OPTIONS": "",
+  "RESPAWN_PROTECTION_HOURS": "23",
+  "FORCE_BACKUP": "false",
+  "RETENTION_DAYS": "7",
+  "METRICS_PORT": ""
+}
