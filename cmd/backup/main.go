@@ -92,7 +92,11 @@ func main() {
 					Details:   map[string]interface{}{"error": err.Error()},
 				}
 			}
-			defer pool.Close()
+			defer func() {
+				if err := pool.Close(); err != nil {
+					logger.Warn("Failed to close connection pool", "error", err)
+				}
+			}()
 
 			// Get database info using the pool
 			info, err := pool.GetDatabaseInfo()

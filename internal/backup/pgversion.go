@@ -120,7 +120,7 @@ func findAvailablePSQL() string {
 			return psqlBin
 		}
 	}
-	
+
 	// Fallback to plain psql
 	return "psql"
 }
@@ -155,7 +155,7 @@ func getServerVersionWithBinary(ctx context.Context, connectionURL string, psqlB
 			case <-time.After(delay):
 				// Continue with retry
 			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)", 
+				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)",
 					attempt, ctx.Err(), attemptErrors)
 			}
 
