@@ -187,7 +187,7 @@ func (p *PostgresBackup) GetInfoWithRetry(ctx context.Context, retryConfig Retry
 			version() as version
 	`
 
-	var lastErr error
+	var attemptErrors []string
 	delay := retryConfig.InitialDelay
 
 	for attempt := 0; attempt <= retryConfig.MaxRetries; attempt++ {
@@ -201,7 +201,8 @@ func (p *PostgresBackup) GetInfoWithRetry(ctx context.Context, retryConfig Retry
 			case <-time.After(delay):
 				// Continue with retry
 			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)", 
+					attempt, ctx.Err(), attemptErrors)
 			}
 
 			// Calculate next delay with exponential backoff
@@ -254,11 +255,13 @@ func (p *PostgresBackup) GetInfoWithRetry(ctx context.Context, retryConfig Retry
 			exitErr.Stderr = stderr.Bytes()
 		}
 
-		lastErr = err
+		// Record the error for this attempt
+		attemptErrors = append(attemptErrors, fmt.Sprintf("attempt %d: %v (stderr: %s)", attempt+1, err, stderr.String()))
 
 		// Check if this is a connection error that we should retry
 		if isRetryableError(err) {
 			p.logger.Warn("Retryable error encountered",
+				"attempt", attempt+1,
 				"error", err,
 				"stderr", stderr.String())
 		} else {
@@ -267,6 +270,6 @@ func (p *PostgresBackup) GetInfoWithRetry(ctx context.Context, retryConfig Retry
 		}
 	}
 
-	return nil, fmt.Errorf("failed to get database info after %d retries: %w",
-		retryConfig.MaxRetries, lastErr)
+	return nil, fmt.Errorf("failed to get database info after %d retries (errors: %v)",
+		retryConfig.MaxRetries, attemptErrors)
 }
