@@ -25,6 +25,23 @@ func TestDefaultRetryConfig(t *testing.T) {
 	}
 }
 
+func TestHealthCheckRetryConfig(t *testing.T) {
+	config := HealthCheckRetryConfig()
+
+	if config.MaxRetries != 3 {
+		t.Errorf("expected MaxRetries to be 3, got %d", config.MaxRetries)
+	}
+	if config.InitialDelay != 1*time.Second {
+		t.Errorf("expected InitialDelay to be 1s, got %v", config.InitialDelay)
+	}
+	if config.MaxDelay != 5*time.Second {
+		t.Errorf("expected MaxDelay to be 5s, got %v", config.MaxDelay)
+	}
+	if config.BackoffFactor != 2.0 {
+		t.Errorf("expected BackoffFactor to be 2.0, got %f", config.BackoffFactor)
+	}
+}
+
 func TestIsColdBootError(t *testing.T) {
 	tests := []struct {
 		name     string

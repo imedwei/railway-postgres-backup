@@ -90,6 +90,9 @@ The service includes automatic retry logic for database connections to handle co
 | `PSQL_RETRY_MAX_ATTEMPTS` | Maximum retries for psql commands | 5 |
 | `PSQL_RETRY_INITIAL_DELAY` | Initial delay for psql retries (seconds) | 2 |
 | `PSQL_RETRY_MAX_DELAY` | Maximum delay for psql retries (seconds) | 30 |
+| `HEALTH_CHECK_RETRY_MAX_ATTEMPTS` | Maximum retries for health checks | 3 |
+| `HEALTH_CHECK_RETRY_INITIAL_DELAY` | Initial delay for health check retries (seconds) | 1 |
+| `HEALTH_CHECK_RETRY_MAX_DELAY` | Maximum delay for health check retries (seconds) | 5 |
 
 ### Monitoring Configuration
 
