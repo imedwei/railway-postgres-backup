@@ -82,13 +82,9 @@ func main() {
 		})
 
 		httpServer.RegisterHealthCheck("database", func(ctx context.Context) health.Check {
-			// Use connection pool with retry for health checks
-			pool, err := utils.NewConnectionPoolWithRetry(ctx, cfg.DatabaseURL, utils.RetryConfig{
-				MaxRetries:    3,               // Fewer retries for health checks
-				InitialDelay:  1 * time.Second, // Shorter initial delay
-				MaxDelay:      5 * time.Second, // Lower max delay for faster health checks
-				BackoffFactor: 2.0,
-			})
+			// Use connection pool with health check retry config
+			healthCheckRetryConfig := utils.HealthCheckRetryConfig()
+			pool, err := utils.NewConnectionPoolWithRetry(ctx, cfg.DatabaseURL, healthCheckRetryConfig)
 			if err != nil {
 				return health.Check{
 					Status:    health.StatusUnhealthy,

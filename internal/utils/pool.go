@@ -71,6 +71,38 @@ func DefaultRetryConfig() RetryConfig {
 	return config
 }
 
+// HealthCheckRetryConfig returns a retry configuration optimized for health checks
+// with fewer retries and shorter delays to ensure quick health check responses.
+func HealthCheckRetryConfig() RetryConfig {
+	config := RetryConfig{
+		MaxRetries:    3,                // Fewer retries for health checks
+		InitialDelay:  1 * time.Second,  // Shorter initial delay
+		MaxDelay:      5 * time.Second,  // Lower max delay for faster health checks
+		BackoffFactor: 2.0,              // Standard exponential backoff
+	}
+
+	// Override with health check specific environment variables if set
+	if maxRetries := os.Getenv("HEALTH_CHECK_RETRY_MAX_ATTEMPTS"); maxRetries != "" {
+		if val, err := strconv.Atoi(maxRetries); err == nil && val > 0 {
+			config.MaxRetries = val
+		}
+	}
+
+	if initialDelay := os.Getenv("HEALTH_CHECK_RETRY_INITIAL_DELAY"); initialDelay != "" {
+		if val, err := strconv.Atoi(initialDelay); err == nil && val > 0 {
+			config.InitialDelay = time.Duration(val) * time.Second
+		}
+	}
+
+	if maxDelay := os.Getenv("HEALTH_CHECK_RETRY_MAX_DELAY"); maxDelay != "" {
+		if val, err := strconv.Atoi(maxDelay); err == nil && val > 0 {
+			config.MaxDelay = time.Duration(val) * time.Second
+		}
+	}
+
+	return config
+}
+
 // NewConnectionPool creates a new connection pool from a database URL with default retry configuration.
 func NewConnectionPool(databaseURL string) (*ConnectionPool, error) {
 	return NewConnectionPoolWithRetry(context.Background(), databaseURL, DefaultRetryConfig())
