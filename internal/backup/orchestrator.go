@@ -107,40 +107,12 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 
 	dumpTimer.Observe(time.Since(dumpStart).Seconds())
 
-	// Create a tee reader to count bytes
-	pr, pw := io.Pipe()
-	var bytesWritten int64
-
-	go func() {
-		defer func() {
-			if err := pw.Close(); err != nil {
-				o.logger.Warn("Failed to close pipe writer", "error", err)
-			}
-		}()
-
-		buf := make([]byte, 32*1024) // 32KB buffer
-		for {
-			n, err := reader.Read(buf)
-			if n > 0 {
-				bytesWritten += int64(n)
-				if _, writeErr := pw.Write(buf[:n]); writeErr != nil {
-					if closeErr := pw.CloseWithError(writeErr); closeErr != nil {
-						o.logger.Warn("Failed to close pipe writer with error", "error", closeErr)
-					}
-					return
-				}
-			}
-			if err != nil {
-				if err != io.EOF {
-					if closeErr := pw.CloseWithError(err); closeErr != nil {
-						o.logger.Warn("Failed to close pipe writer with error", "error", closeErr)
-					}
-					return
-				}
-				break
-			}
-		}
-	}()
+	// Create a counting reader and upload in a single operation
+	// This ensures we don't create partial files on storage if something fails
+	countingReader := &countingReader{
+		reader: reader,
+		count:  0,
+	}
 
 	// Prepare metadata
 	metadata := map[string]string{
@@ -155,11 +127,14 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	uploadTimer := metrics.BackupDuration.WithLabelValues("upload")
 	uploadStart := time.Now()
 
-	if err := o.storage.Upload(ctx, storageKey, pr, metadata); err != nil {
+	// The upload will either complete fully or not create a file at all
+	if err := o.storage.Upload(ctx, storageKey, countingReader, metadata); err != nil {
 		metrics.RecordStorageOperation("upload", o.config.StorageProvider, false)
 		metrics.RecordBackupAttempt(false)
 		return fmt.Errorf("failed to upload backup: %w", err)
 	}
+
+	bytesWritten := countingReader.count
 
 	uploadDuration := time.Since(uploadStart)
 	uploadTimer.Observe(uploadDuration.Seconds())
@@ -239,4 +214,17 @@ func (o *Orchestrator) cleanupOldBackups(ctx context.Context) error {
 
 	o.logger.Info("Cleanup completed", "deleted_count", deleted)
 	return nil
+}
+
+// countingReader wraps an io.Reader and counts bytes read
+type countingReader struct {
+	reader io.Reader
+	count  int64
+}
+
+// Read implements io.Reader and counts bytes
+func (cr *countingReader) Read(p []byte) (int, error) {
+	n, err := cr.reader.Read(p)
+	cr.count += int64(n)
+	return n, err
 }

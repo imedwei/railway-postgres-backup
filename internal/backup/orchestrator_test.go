@@ -178,6 +178,58 @@ func TestOrchestrator_Run(t *testing.T) {
 			wantErr:    true,
 			wantUpload: true,
 		},
+		{
+			name: "no file created on respawn protection",
+			config: &config.Config{
+				StorageProvider:        "s3",
+				BackupFilePrefix:       "test",
+				RespawnProtectionHours: 23,
+				ForceBackup:            false,
+			},
+			mockBackup: &mockBackup{
+				dumpData: "backup data",
+			},
+			mockStorage: &mockStorage{
+				lastBackup: time.Now().Add(-1 * time.Hour), // Too recent
+			},
+			wantErr:    false,
+			wantUpload: false,
+		},
+		{
+			name: "no file created on dump failure",
+			config: &config.Config{
+				StorageProvider:        "s3",
+				BackupFilePrefix:       "test",
+				RespawnProtectionHours: 23,
+				ForceBackup:            true,
+			},
+			mockBackup: &mockBackup{
+				dumpErr: errors.New("database connection failed"),
+			},
+			mockStorage: &mockStorage{
+				lastBackup: time.Now().Add(-25 * time.Hour), // Old enough
+			},
+			wantErr:    true,
+			wantUpload: false,
+		},
+		{
+			name: "no file persisted on upload failure",
+			config: &config.Config{
+				StorageProvider:        "s3",
+				BackupFilePrefix:       "test",
+				RespawnProtectionHours: 23,
+				ForceBackup:            true,
+			},
+			mockBackup: &mockBackup{
+				dumpData: "backup data",
+			},
+			mockStorage: &mockStorage{
+				lastBackup: time.Now().Add(-25 * time.Hour), // Old enough
+				uploadErr:  errors.New("network timeout"),
+			},
+			wantErr:    true,
+			wantUpload: true, // Upload is attempted but fails
+		},
 	}
 
 	for _, tt := range tests {
