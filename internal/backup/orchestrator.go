@@ -83,10 +83,10 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 	// Generate backup filename and key
 	timestamp := time.Now()
 	filename := utils.GenerateBackupFilename(o.config.BackupFilePrefix, timestamp, info.Version)
-	
+
 	// Create storage key with year/month directory structure
 	storageKey := fmt.Sprintf("%d/%02d/%s", timestamp.Year(), timestamp.Month(), filename)
-	
+
 	o.logger.Info("Generated backup filename", "filename", filename, "storage_key", storageKey)
 
 	// Create backup

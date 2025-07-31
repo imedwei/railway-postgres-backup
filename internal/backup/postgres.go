@@ -46,12 +46,12 @@ func NewPostgresBackup(connectionURL string, pgDumpOptions string) *PostgresBack
 
 	if version, err := GetServerVersion(ctx, connectionURL); err == nil {
 		logger.Info("Detected PostgreSQL version", "version", version.Full, "major", version.Major)
-		
+
 		if pgDumpBin, err := FindBestPGDump(version); err == nil {
 			pb.pgDumpBin = pgDumpBin
 			logger.Info("Selected pg_dump binary", "binary", pgDumpBin)
 		}
-		
+
 		if psqlBin, err := FindBestPSQL(version); err == nil {
 			pb.psqlBin = psqlBin
 			logger.Info("Selected psql binary", "binary", psqlBin)
@@ -171,8 +171,13 @@ func (p *PostgresBackup) Validate(ctx context.Context, reader io.Reader) error {
 	return nil
 }
 
-// GetInfo returns information about the database.
+// GetInfo returns information about the database with retry logic.
 func (p *PostgresBackup) GetInfo(ctx context.Context) (*DatabaseInfo, error) {
+	return p.GetInfoWithRetry(ctx, defaultPSQLRetryConfig())
+}
+
+// GetInfoWithRetry returns information about the database with configurable retry logic.
+func (p *PostgresBackup) GetInfoWithRetry(ctx context.Context, retryConfig RetryConfig) (*DatabaseInfo, error) {
 	// Query to get database information
 	query := `
 		SELECT 
@@ -181,38 +186,88 @@ func (p *PostgresBackup) GetInfo(ctx context.Context) (*DatabaseInfo, error) {
 			version() as version
 	`
 
-	// Use psql to execute the query
-	cmd := exec.CommandContext(ctx, p.psqlBin,
-		"--no-password",
-		"--tuples-only",
-		"--no-align",
-		"--field-separator=|",
-		"--command", query,
-		p.connectionURL,
-	)
+	var lastErr error
+	delay := retryConfig.InitialDelay
 
-	// Set environment
-	cmd.Env = append(os.Environ(), "PGPASSWORD=")
+	for attempt := 0; attempt <= retryConfig.MaxRetries; attempt++ {
+		if attempt > 0 {
+			p.logger.Info("Retrying database info query",
+				"attempt", attempt,
+				"max_retries", retryConfig.MaxRetries,
+				"delay", delay)
 
-	// Execute command
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database info: %w", err)
+			select {
+			case <-time.After(delay):
+				// Continue with retry
+			case <-ctx.Done():
+				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+			}
+
+			// Calculate next delay with exponential backoff
+			delay = time.Duration(float64(delay) * retryConfig.BackoffFactor)
+			if delay > retryConfig.MaxDelay {
+				delay = retryConfig.MaxDelay
+			}
+		}
+
+		// Use psql to execute the query
+		cmd := exec.CommandContext(ctx, p.psqlBin,
+			"--no-password",
+			"--tuples-only",
+			"--no-align",
+			"--field-separator=|",
+			"--command", query,
+			p.connectionURL,
+		)
+
+		// Set environment
+		cmd.Env = append(os.Environ(), "PGPASSWORD=")
+
+		// Capture stderr for better error messages
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
+		// Execute command
+		output, err := cmd.Output()
+		if err == nil {
+			// Parse output
+			parts := strings.Split(strings.TrimSpace(string(output)), "|")
+			if len(parts) != 3 {
+				err = fmt.Errorf("unexpected output format from psql: %s", string(output))
+			} else {
+				// Parse size
+				var size int64
+				_, _ = fmt.Sscanf(parts[1], "%d", &size)
+
+				if attempt > 0 {
+					p.logger.Info("Successfully retrieved database info",
+						"attempts", attempt+1)
+				}
+
+				return &DatabaseInfo{
+					Name:    strings.TrimSpace(parts[0]),
+					Size:    size,
+					Version: strings.TrimSpace(parts[2]),
+				}, nil
+			}
+		} else if exitErr, ok := err.(*exec.ExitError); ok {
+			// Add stderr to the error for better debugging
+			exitErr.Stderr = stderr.Bytes()
+		}
+
+		lastErr = err
+
+		// Check if this is a connection error that we should retry
+		if isRetryableError(err) {
+			p.logger.Warn("Retryable error encountered",
+				"error", err,
+				"stderr", stderr.String())
+		} else {
+			// If it's not retryable, return immediately
+			return nil, fmt.Errorf("non-retryable error: %w (stderr: %s)", err, stderr.String())
+		}
 	}
 
-	// Parse output
-	parts := strings.Split(strings.TrimSpace(string(output)), "|")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("unexpected output format from psql")
-	}
-
-	// Parse size
-	var size int64
-	_, _ = fmt.Sscanf(parts[1], "%d", &size)
-
-	return &DatabaseInfo{
-		Name:    strings.TrimSpace(parts[0]),
-		Size:    size,
-		Version: strings.TrimSpace(parts[2]),
-	}, nil
+	return nil, fmt.Errorf("failed to get database info after %d retries: %w",
+		retryConfig.MaxRetries, lastErr)
 }
