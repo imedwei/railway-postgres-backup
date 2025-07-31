@@ -141,7 +141,7 @@ func GetServerVersionWithRetry(ctx context.Context, connectionURL string, retryC
 func getServerVersionWithBinary(ctx context.Context, connectionURL string, psqlBin string, retryConfig RetryConfig) (*PGVersion, error) {
 	logger := slog.Default().With("component", "pgversion", "binary", psqlBin)
 
-	var lastErr error
+	var attemptErrors []string
 	delay := retryConfig.InitialDelay
 
 	for attempt := 0; attempt <= retryConfig.MaxRetries; attempt++ {
@@ -155,7 +155,8 @@ func getServerVersionWithBinary(ctx context.Context, connectionURL string, psqlB
 			case <-time.After(delay):
 				// Continue with retry
 			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)", 
+					attempt, ctx.Err(), attemptErrors)
 			}
 
 			// Calculate next delay with exponential backoff
@@ -193,11 +194,13 @@ func getServerVersionWithBinary(ctx context.Context, connectionURL string, psqlB
 			exitErr.Stderr = stderr.Bytes()
 		}
 
-		lastErr = err
+		// Record the error for this attempt
+		attemptErrors = append(attemptErrors, fmt.Sprintf("attempt %d: %v (stderr: %s)", attempt+1, err, stderr.String()))
 
 		// Check if this is a connection error that we should retry
 		if isRetryableError(err) {
 			logger.Warn("Retryable error encountered",
+				"attempt", attempt+1,
 				"error", err,
 				"stderr", stderr.String())
 		} else {
@@ -206,8 +209,8 @@ func getServerVersionWithBinary(ctx context.Context, connectionURL string, psqlB
 		}
 	}
 
-	return nil, fmt.Errorf("failed to get server version after %d retries: %w",
-		retryConfig.MaxRetries, lastErr)
+	return nil, fmt.Errorf("failed to get server version after %d retries (errors: %v)",
+		retryConfig.MaxRetries, attemptErrors)
 }
 
 // FindBestPGDump finds the best pg_dump binary for the given server version

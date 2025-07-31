@@ -80,7 +80,7 @@ func NewConnectionPool(databaseURL string) (*ConnectionPool, error) {
 func NewConnectionPoolWithRetry(ctx context.Context, databaseURL string, retryConfig RetryConfig) (*ConnectionPool, error) {
 	logger := slog.Default().With("component", "connection-pool")
 
-	var lastErr error
+	var attemptErrors []string
 	delay := retryConfig.InitialDelay
 
 	for attempt := 0; attempt <= retryConfig.MaxRetries; attempt++ {
@@ -94,7 +94,8 @@ func NewConnectionPoolWithRetry(ctx context.Context, databaseURL string, retryCo
 			case <-time.After(delay):
 				// Continue with retry
 			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)", 
+					attempt, ctx.Err(), attemptErrors)
 			}
 
 			// Calculate next delay with exponential backoff
@@ -111,20 +112,23 @@ func NewConnectionPoolWithRetry(ctx context.Context, databaseURL string, retryCo
 			return pool, nil
 		}
 
-		lastErr = err
+		// Record the error for this attempt
+		attemptErrors = append(attemptErrors, fmt.Sprintf("attempt %d: %v", attempt+1, err))
 
 		// Check if this is a cold boot error
 		if isColdBootError(err) {
 			logger.Warn("Database appears to be cold booting",
+				"attempt", attempt+1,
 				"error", err)
 		} else {
 			logger.Error("Failed to connect to database",
+				"attempt", attempt+1,
 				"error", err)
 		}
 	}
 
-	return nil, fmt.Errorf("all database connection attempts failed after %d retries: %w",
-		retryConfig.MaxRetries, lastErr)
+	return nil, fmt.Errorf("all database connection attempts failed after %d retries (errors: %v)",
+		retryConfig.MaxRetries, attemptErrors)
 }
 
 // tryDatabaseConnection attempts to connect to the database with the given URL
