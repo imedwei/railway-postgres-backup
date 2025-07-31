@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"os"
 	"os/exec"
 	"strings"
@@ -204,10 +205,8 @@ func (p *PostgresBackup) GetInfoWithRetry(ctx context.Context, retryConfig Retry
 			}
 
 			// Calculate next delay with exponential backoff
-			delay = time.Duration(float64(delay) * retryConfig.BackoffFactor)
-			if delay > retryConfig.MaxDelay {
-				delay = retryConfig.MaxDelay
-			}
+			nextDelay := float64(delay) * retryConfig.BackoffFactor
+			delay = time.Duration(math.Min(nextDelay, float64(retryConfig.MaxDelay)))
 		}
 
 		// Use psql to execute the query

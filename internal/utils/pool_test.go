@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"math"
 	"os"
 	"testing"
 	"time"
@@ -121,6 +122,57 @@ func TestRetryConfigFromEnvironment(t *testing.T) {
 	}
 	if config.BackoffFactor != 1.5 {
 		t.Errorf("expected BackoffFactor to be 1.5, got %f", config.BackoffFactor)
+	}
+}
+
+func TestExponentialBackoffDelayCalculation(t *testing.T) {
+	tests := []struct {
+		name           string
+		currentDelay   time.Duration
+		backoffFactor  float64
+		maxDelay       time.Duration
+		expectedDelay  time.Duration
+	}{
+		{
+			name:          "normal backoff",
+			currentDelay:  2 * time.Second,
+			backoffFactor: 2.0,
+			maxDelay:      60 * time.Second,
+			expectedDelay: 4 * time.Second,
+		},
+		{
+			name:          "clamped to max delay",
+			currentDelay:  30 * time.Second,
+			backoffFactor: 2.0,
+			maxDelay:      60 * time.Second,
+			expectedDelay: 60 * time.Second,
+		},
+		{
+			name:          "very large backoff factor",
+			currentDelay:  1 * time.Second,
+			backoffFactor: 1000.0,
+			maxDelay:      60 * time.Second,
+			expectedDelay: 60 * time.Second,
+		},
+		{
+			name:          "fractional backoff factor",
+			currentDelay:  10 * time.Second,
+			backoffFactor: 1.5,
+			maxDelay:      60 * time.Second,
+			expectedDelay: 15 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the delay calculation from the retry logic
+			nextDelay := float64(tt.currentDelay) * tt.backoffFactor
+			delay := time.Duration(math.Min(nextDelay, float64(tt.maxDelay)))
+
+			if delay != tt.expectedDelay {
+				t.Errorf("expected delay %v, got %v", tt.expectedDelay, delay)
+			}
+		})
 	}
 }
 
