@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/url"
 	"os"
 	"strconv"
@@ -97,10 +98,8 @@ func NewConnectionPoolWithRetry(ctx context.Context, databaseURL string, retryCo
 			}
 
 			// Calculate next delay with exponential backoff
-			delay = time.Duration(float64(delay) * retryConfig.BackoffFactor)
-			if delay > retryConfig.MaxDelay {
-				delay = retryConfig.MaxDelay
-			}
+			nextDelay := float64(delay) * retryConfig.BackoffFactor
+			delay = time.Duration(math.Min(nextDelay, float64(retryConfig.MaxDelay)))
 		}
 
 		pool, err := tryDatabaseConnection(ctx, databaseURL)
