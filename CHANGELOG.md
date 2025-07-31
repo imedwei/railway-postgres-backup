@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health check endpoints for Kubernetes/Railway
 - Automatic cleanup of old backups based on retention policy
 - Retry logic with exponential backoff
+- Enhanced database connection retry logic for cold-start scenarios
+- Configurable retry parameters for database connections and psql commands
 - Graceful shutdown handling
 - Panic recovery
 - Progress tracking for large backups

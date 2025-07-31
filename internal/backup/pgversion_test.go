@@ -6,11 +6,11 @@ import (
 
 func TestParsePGVersion(t *testing.T) {
 	tests := []struct {
-		name        string
-		versionStr  string
-		wantMajor   int
-		wantMinor   int
-		wantErr     bool
+		name       string
+		versionStr string
+		wantMajor  int
+		wantMinor  int
+		wantErr    bool
 	}{
 		{
 			name:       "PostgreSQL 16.2",

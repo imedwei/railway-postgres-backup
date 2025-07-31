@@ -9,6 +9,7 @@ A production-ready PostgreSQL backup service designed for Railway.app deployment
 - **Railway Integration**: Works seamlessly with Railway's cron feature
 - **Monitoring**: Prometheus metrics and health check endpoints
 - **Production Ready**: Retry logic, graceful shutdown, panic recovery
+- **Cold Start Support**: Automatic retries with exponential backoff for database connections
 - **Flexible Configuration**: Environment variable based configuration
 - **Backup Management**: Automatic cleanup of old backups based on retention policy
 - **PostgreSQL Version Support**: Automatically detects and uses the correct pg_dump version for PostgreSQL 15, 16, and 17
@@ -75,6 +76,20 @@ docker run -e DATABASE_URL=postgres://... \
 | `RESPAWN_PROTECTION_HOURS` | Minimum hours between backups | 23 |
 | `FORCE_BACKUP` | Skip respawn protection | false |
 | `RETENTION_DAYS` | Days to keep old backups | 0 (disabled) |
+
+### Database Connection Retry Configuration
+
+The service includes automatic retry logic for database connections to handle cold-start scenarios (e.g., when the database is still starting up).
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB_RETRY_MAX_ATTEMPTS` | Maximum number of connection retry attempts | 10 |
+| `DB_RETRY_INITIAL_DELAY` | Initial delay between retries (seconds) | 2 |
+| `DB_RETRY_MAX_DELAY` | Maximum delay between retries (seconds) | 60 |
+| `DB_RETRY_BACKOFF_FACTOR` | Exponential backoff factor | 2.0 |
+| `PSQL_RETRY_MAX_ATTEMPTS` | Maximum retries for psql commands | 5 |
+| `PSQL_RETRY_INITIAL_DELAY` | Initial delay for psql retries (seconds) | 2 |
+| `PSQL_RETRY_MAX_DELAY` | Maximum delay for psql retries (seconds) | 30 |
 
 ### Monitoring Configuration
 

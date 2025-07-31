@@ -15,6 +15,7 @@ import (
 	"github.com/imedwei/railway-postgres-backup/internal/health"
 	"github.com/imedwei/railway-postgres-backup/internal/server"
 	"github.com/imedwei/railway-postgres-backup/internal/storage"
+	"github.com/imedwei/railway-postgres-backup/internal/utils"
 )
 
 func main() {
@@ -81,9 +82,24 @@ func main() {
 		})
 
 		httpServer.RegisterHealthCheck("database", func(ctx context.Context) health.Check {
-			// Check database connectivity
-			dbBackup := backup.NewPostgresBackup(cfg.DatabaseURL, cfg.PGDumpOptions)
-			info, err := dbBackup.GetInfo(ctx)
+			// Use connection pool with retry for health checks
+			pool, err := utils.NewConnectionPoolWithRetry(ctx, cfg.DatabaseURL, utils.RetryConfig{
+				MaxRetries:    3,               // Fewer retries for health checks
+				InitialDelay:  1 * time.Second, // Shorter initial delay
+				MaxDelay:      5 * time.Second, // Lower max delay for faster health checks
+				BackoffFactor: 2.0,
+			})
+			if err != nil {
+				return health.Check{
+					Status:    health.StatusUnhealthy,
+					Timestamp: time.Now(),
+					Details:   map[string]interface{}{"error": err.Error()},
+				}
+			}
+			defer pool.Close()
+
+			// Get database info using the pool
+			info, err := pool.GetDatabaseInfo()
 			if err != nil {
 				return health.Check{
 					Status:    health.StatusUnhealthy,
