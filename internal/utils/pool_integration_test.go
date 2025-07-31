@@ -16,11 +16,11 @@ func TestConnectionRetryIntegration(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		databaseURL    string
-		retryConfig    RetryConfig
-		expectedErr    string
-		expectSuccess  bool
+		name          string
+		databaseURL   string
+		retryConfig   RetryConfig
+		expectedErr   string
+		expectSuccess bool
 	}{
 		{
 			name:        "connection refused error triggers retry",
@@ -61,12 +61,14 @@ func TestConnectionRetryIntegration(t *testing.T) {
 				if err != nil {
 					t.Errorf("expected success but got error: %v", err)
 				} else {
-					defer pool.Close()
+					defer func() {
+						_ = pool.Close()
+					}()
 				}
 			} else {
 				if err == nil {
 					t.Errorf("expected error but got success")
-					pool.Close()
+					_ = pool.Close()
 				} else if !errors.Is(err, context.DeadlineExceeded) && !contains(err.Error(), tt.expectedErr) {
 					t.Errorf("expected error containing %q, got %v", tt.expectedErr, err)
 				}
@@ -98,7 +100,7 @@ func TestColdBootErrorDetection(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "timeout error", 
+			name:     "timeout error",
 			err:      &net.OpError{Err: errors.New("i/o timeout")},
 			expected: true,
 		},
@@ -133,12 +135,12 @@ func TestRetryDelayProgression(t *testing.T) {
 	}
 
 	expectedDelays := []time.Duration{
-		0,                        // First attempt, no delay
-		100 * time.Millisecond,   // After 1st failure
-		200 * time.Millisecond,   // After 2nd failure
-		400 * time.Millisecond,   // After 3rd failure
-		800 * time.Millisecond,   // After 4th failure
-		1 * time.Second,          // After 5th failure (capped at max)
+		0,                      // First attempt, no delay
+		100 * time.Millisecond, // After 1st failure
+		200 * time.Millisecond, // After 2nd failure
+		400 * time.Millisecond, // After 3rd failure
+		800 * time.Millisecond, // After 4th failure
+		1 * time.Second,        // After 5th failure (capped at max)
 	}
 
 	delay := config.InitialDelay

@@ -24,42 +24,12 @@ func TestStorageAtomicUpload(t *testing.T) {
 	})
 }
 
-// failingReader is a reader that fails after reading n bytes
-type failingReader struct {
-	data      string
-	bytesRead int
-	failAfter int
-}
-
-func (r *failingReader) Read(p []byte) (n int, err error) {
-	if r.bytesRead >= r.failAfter {
-		return 0, io.ErrUnexpectedEOF
-	}
-
-	remaining := r.failAfter - r.bytesRead
-	if remaining > len(p) {
-		remaining = len(p)
-	}
-
-	dataRemaining := len(r.data) - r.bytesRead
-	if dataRemaining < remaining {
-		remaining = dataRemaining
-	}
-
-	if remaining > 0 {
-		copy(p[:remaining], r.data[r.bytesRead:r.bytesRead+remaining])
-		r.bytesRead += remaining
-		return remaining, nil
-	}
-
-	return 0, io.EOF
-}
 
 // TestCountingReader verifies our counting reader works correctly
 func TestCountingReader(t *testing.T) {
 	data := "Hello, World!"
 	reader := strings.NewReader(data)
-	
+
 	countingReader := &countingReader{
 		reader: reader,
 		count:  0,

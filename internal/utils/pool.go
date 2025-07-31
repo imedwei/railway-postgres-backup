@@ -75,10 +75,10 @@ func DefaultRetryConfig() RetryConfig {
 // with fewer retries and shorter delays to ensure quick health check responses.
 func HealthCheckRetryConfig() RetryConfig {
 	config := RetryConfig{
-		MaxRetries:    3,                // Fewer retries for health checks
-		InitialDelay:  1 * time.Second,  // Shorter initial delay
-		MaxDelay:      5 * time.Second,  // Lower max delay for faster health checks
-		BackoffFactor: 2.0,              // Standard exponential backoff
+		MaxRetries:    3,               // Fewer retries for health checks
+		InitialDelay:  1 * time.Second, // Shorter initial delay
+		MaxDelay:      5 * time.Second, // Lower max delay for faster health checks
+		BackoffFactor: 2.0,             // Standard exponential backoff
 	}
 
 	// Override with health check specific environment variables if set
@@ -126,7 +126,7 @@ func NewConnectionPoolWithRetry(ctx context.Context, databaseURL string, retryCo
 			case <-time.After(delay):
 				// Continue with retry
 			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)", 
+				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)",
 					attempt, ctx.Err(), attemptErrors)
 			}
 

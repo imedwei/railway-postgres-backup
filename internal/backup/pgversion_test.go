@@ -87,15 +87,15 @@ func TestFindBestPGDump(t *testing.T) {
 func TestFindAvailablePSQL(t *testing.T) {
 	// This test verifies that findAvailablePSQL returns a psql binary
 	psqlBin := findAvailablePSQL()
-	
+
 	// Should always return at least "psql" as fallback
 	if psqlBin == "" {
 		t.Error("findAvailablePSQL returned empty string")
 	}
-	
+
 	// Log which binary was found
 	t.Logf("findAvailablePSQL returned: %s", psqlBin)
-	
+
 	// Verify it's one of the expected values
 	validBinaries := map[string]bool{
 		"psql":   true,
@@ -103,7 +103,7 @@ func TestFindAvailablePSQL(t *testing.T) {
 		"psql16": true,
 		"psql17": true,
 	}
-	
+
 	if !validBinaries[psqlBin] {
 		t.Errorf("unexpected psql binary: %s", psqlBin)
 	}

@@ -37,7 +37,7 @@ func NewPostgresBackup(connectionURL string, pgDumpOptions string) *PostgresBack
 
 	// First, find an available psql binary for version detection
 	availablePSQL := findAvailablePSQL()
-	
+
 	pb := &PostgresBackup{
 		connectionURL: connectionURL,
 		pgDumpOptions: options,
@@ -204,7 +204,7 @@ func (p *PostgresBackup) GetInfoWithRetry(ctx context.Context, retryConfig Retry
 			case <-time.After(delay):
 				// Continue with retry
 			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)", 
+				return nil, fmt.Errorf("context cancelled during retry after %d attempts: %w (previous errors: %v)",
 					attempt, ctx.Err(), attemptErrors)
 			}
 

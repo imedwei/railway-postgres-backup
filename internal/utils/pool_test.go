@@ -144,11 +144,11 @@ func TestRetryConfigFromEnvironment(t *testing.T) {
 
 func TestExponentialBackoffDelayCalculation(t *testing.T) {
 	tests := []struct {
-		name           string
-		currentDelay   time.Duration
-		backoffFactor  float64
-		maxDelay       time.Duration
-		expectedDelay  time.Duration
+		name          string
+		currentDelay  time.Duration
+		backoffFactor float64
+		maxDelay      time.Duration
+		expectedDelay time.Duration
 	}{
 		{
 			name:          "normal backoff",
@@ -201,8 +201,8 @@ func getEnv(key string) string {
 
 func setEnv(key, value string) {
 	if value == "" {
-		os.Unsetenv(key)
+		_ = os.Unsetenv(key)
 	} else {
-		os.Setenv(key, value)
+		_ = os.Setenv(key, value)
 	}
 }
