@@ -111,6 +111,20 @@ func ParsePGVersion(versionStr string) (*PGVersion, error) {
 	}, nil
 }
 
+// findAvailablePSQL finds any available psql binary
+func findAvailablePSQL() string {
+	// Try versioned binaries first (newest to oldest)
+	for _, v := range []int{17, 16, 15} {
+		psqlBin := fmt.Sprintf("psql%d", v)
+		if _, err := exec.LookPath(psqlBin); err == nil {
+			return psqlBin
+		}
+	}
+	
+	// Fallback to plain psql
+	return "psql"
+}
+
 // GetServerVersion gets the PostgreSQL server version with retry logic
 func GetServerVersion(ctx context.Context, connectionURL string) (*PGVersion, error) {
 	return GetServerVersionWithRetry(ctx, connectionURL, defaultPSQLRetryConfig())
@@ -118,7 +132,14 @@ func GetServerVersion(ctx context.Context, connectionURL string) (*PGVersion, er
 
 // GetServerVersionWithRetry gets the PostgreSQL server version with configurable retry logic
 func GetServerVersionWithRetry(ctx context.Context, connectionURL string, retryConfig RetryConfig) (*PGVersion, error) {
-	logger := slog.Default().With("component", "pgversion")
+	// Try to find the best available psql binary
+	psqlBin := findAvailablePSQL()
+	return getServerVersionWithBinary(ctx, connectionURL, psqlBin, retryConfig)
+}
+
+// getServerVersionWithBinary gets the PostgreSQL server version using a specific psql binary
+func getServerVersionWithBinary(ctx context.Context, connectionURL string, psqlBin string, retryConfig RetryConfig) (*PGVersion, error) {
+	logger := slog.Default().With("component", "pgversion", "binary", psqlBin)
 
 	var lastErr error
 	delay := retryConfig.InitialDelay
@@ -142,7 +163,7 @@ func GetServerVersionWithRetry(ctx context.Context, connectionURL string, retryC
 			delay = time.Duration(math.Min(nextDelay, float64(retryConfig.MaxDelay)))
 		}
 
-		cmd := exec.CommandContext(ctx, "psql",
+		cmd := exec.CommandContext(ctx, psqlBin,
 			"--no-password",
 			"--tuples-only",
 			"--no-align",
