@@ -35,10 +35,14 @@ func NewPostgresBackup(connectionURL string, pgDumpOptions string) *PostgresBack
 
 	logger := slog.Default().With("component", "postgres-backup")
 
+	// First, find an available psql binary for version detection
+	availablePSQL := findAvailablePSQL()
+	
 	pb := &PostgresBackup{
 		connectionURL: connectionURL,
 		pgDumpOptions: options,
 		logger:        logger,
+		psqlBin:       availablePSQL, // Set initial psql binary
 	}
 
 	// Try to detect PostgreSQL version and find appropriate binaries
@@ -53,6 +57,7 @@ func NewPostgresBackup(connectionURL string, pgDumpOptions string) *PostgresBack
 			logger.Info("Selected pg_dump binary", "binary", pgDumpBin)
 		}
 
+		// Try to find a better psql binary based on the detected version
 		if psqlBin, err := FindBestPSQL(version); err == nil {
 			pb.psqlBin = psqlBin
 			logger.Info("Selected psql binary", "binary", psqlBin)
@@ -65,9 +70,7 @@ func NewPostgresBackup(connectionURL string, pgDumpOptions string) *PostgresBack
 	if pb.pgDumpBin == "" {
 		pb.pgDumpBin = "pg_dump"
 	}
-	if pb.psqlBin == "" {
-		pb.psqlBin = "psql"
-	}
+	// psqlBin is already set from findAvailablePSQL()
 
 	return pb
 }

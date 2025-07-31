@@ -55,6 +55,27 @@ func TestNewPostgresBackup(t *testing.T) {
 					t.Errorf("pgDumpOptions[%d] = %v, want %v", i, opt, tt.wantOptions[i])
 				}
 			}
+			
+			// Verify psqlBin is set (should be set even before version detection)
+			if pb.psqlBin == "" {
+				t.Error("psqlBin is empty")
+			}
+			
+			// psqlBin should be one of the valid binaries
+			validPSQLBinaries := map[string]bool{
+				"psql":   true,
+				"psql15": true,
+				"psql16": true,
+				"psql17": true,
+			}
+			if !validPSQLBinaries[pb.psqlBin] {
+				t.Errorf("unexpected psqlBin: %s", pb.psqlBin)
+			}
+			
+			// pgDumpBin should also be set (either versioned or default)
+			if pb.pgDumpBin == "" {
+				t.Error("pgDumpBin is empty")
+			}
 		})
 	}
 }
